@@ -38,7 +38,7 @@
   </build>
   <properties>
     <main.verticle>com.cthiebaud.aletheia.MainVerticle</main.verticle>
-    <maven.compiler.java>22</maven.compiler.java>
+    <maven.compiler.java>21</maven.compiler.java>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 </project>

@@ -10,8 +10,10 @@ public class Score {
     private int revealed;
     private String symbol;
     private boolean scrambled;
+    private String when;
 
-    public Score(String pseudo, String level, long elapsed, int erred, int revealed, String symbol, boolean scrambled) {
+    public Score(String pseudo, String level, long elapsed, int erred, int revealed, String symbol, boolean scrambled,
+            String when) {
         this.pseudo = pseudo;
         this.level = level;
         this.elapsed = elapsed;
@@ -19,6 +21,7 @@ public class Score {
         this.revealed = revealed;
         this.symbol = symbol;
         this.scrambled = scrambled;
+        this.when = when;
     }
 
     public String getPseudo() {
@@ -77,6 +80,14 @@ public class Score {
         this.scrambled = scrambled;
     }
 
+    public String getWhen() {
+        return when;
+    }
+
+    public void setWhen(String when) {
+        this.when = when;
+    }
+
     public JsonObject toJson() {
         return new JsonObject()
                 .put("pseudo", pseudo)
@@ -96,6 +107,7 @@ public class Score {
         int revealed = json.getInteger("revealed");
         String symbol = json.getString("symbol");
         boolean scrambled = json.getBoolean("scrambled");
-        return new Score(pseudo, level, elapsed, erred, revealed, symbol, scrambled);
+        String when = json.getString("when");
+        return new Score(pseudo, level, elapsed, erred, revealed, symbol, scrambled, when);
     }
 }
