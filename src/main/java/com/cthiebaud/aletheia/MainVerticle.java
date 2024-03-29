@@ -15,6 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MainVerticle extends AbstractVerticle {
 
@@ -26,7 +28,7 @@ public class MainVerticle extends AbstractVerticle {
 
         Router router = Router.router(vertx);
         router.get("/best").handler(this::handleGetBest);
-        router.get("/").handler(this::handleGet);
+        router.get("/").handler(this::handleGetByPseudo);
         router.post("/").handler(this::handlePost);
         router.delete("/").handler(this::handleDelete);
 
@@ -57,42 +59,6 @@ public class MainVerticle extends AbstractVerticle {
         initialScores.add(initialScore);
 
         scores.put(pseudo, initialScores);
-    }
-
-    /*
-     * 
-     * private void handleRequest(RoutingContext routingContext) {
-     * HttpServerRequest request = routingContext.request();
-     * 
-     * switch (request.method().toString()) {
-     * case "GET":
-     * if (request.params().contains("pseudo")) {
-     * handleGetByPseudo(request);
-     * } else {
-     * handleGet(request);
-     * }
-     * break;
-     * case "POST":
-     * handlePost(request);
-     * break;
-     * case "DELETE":
-     * handleDelete(request);
-     * break;
-     * default:
-     * request.response()
-     * .setStatusCode(405)
-     * .end("Method Not Allowed");
-     * break;
-     * }
-     * }
-     */
-
-    private void handleGet(RoutingContext routingContext) {
-        HttpServerRequest request = routingContext.request();
-
-        request.response()
-                .putHeader("content-type", "application/json")
-                .end(Json.encode(scores));
     }
 
     private void handlePost(RoutingContext routingContext) {
@@ -128,14 +94,23 @@ public class MainVerticle extends AbstractVerticle {
         }
     }
 
-    private void handleGetByPseudo(HttpServerRequest request) {
+    private void handleGetByPseudo(RoutingContext routingContext) {
+        HttpServerRequest request = routingContext.request();
         String pseudo = request.getParam("pseudo");
-        List<Score> pseudoScores = scores.getOrDefault(pseudo, new ArrayList<>());
 
-        if (!pseudoScores.isEmpty()) {
+        List<Score> ret;
+        if (pseudo == null) {
+            ret = scores.values().stream()
+                    .flatMap(List::stream)
+                    .collect(Collectors.toList());
+        } else {
+            ret = scores.getOrDefault(pseudo, new ArrayList<>());
+        }
+
+        if (!ret.isEmpty()) {
             request.response()
                     .putHeader("content-type", "application/json")
-                    .end(Json.encode(pseudoScores));
+                    .end(Json.encode(ret));
         } else {
             request.response()
                     .setStatusCode(404)
@@ -148,17 +123,21 @@ public class MainVerticle extends AbstractVerticle {
 
         String pseudo = request.getParam("pseudo");
         String level = request.getParam("level");
-        Boolean scrambled = Optional.ofNullable(request.getParam("scrambled")).map(Boolean::parseBoolean).orElse(null);
+        Boolean scrambled = Optional.ofNullable(request.getParam("scrambled"))
+                .map(Boolean::parseBoolean)
+                .orElse(null);
         String symbol = request.getParam("symbol");
 
-        Optional<Score> bestScore = scores.entrySet().stream()
+        Stream<Score> qwe = scores.entrySet().stream()
                 .filter(entry -> pseudo == null || entry.getKey().equals(pseudo))
                 .flatMap(entry -> entry.getValue().stream())
                 .filter(score -> (level == null || score.getLevel().equals(level)) &&
                         (symbol == null || score.getSymbol().equals(symbol)) &&
-                        (score.isScrambled() == scrambled) &&
-                        (score.getRevealed() == 32))
-                .min(Comparator.comparingLong(Score::getElapsed));
+                        (scrambled == null || score.isScrambled() == scrambled) &&
+                        (score.getErred() == 0) &&
+                        (score.getRevealed() == 32));
+
+        Optional<Score> bestScore = qwe.min(Comparator.comparingLong(Score::getElapsed));
 
         if (bestScore.isPresent()) {
             request.response()
