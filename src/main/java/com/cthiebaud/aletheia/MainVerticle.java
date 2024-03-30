@@ -1,5 +1,25 @@
 package com.cthiebaud.aletheia;
 
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -13,24 +33,19 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 public class MainVerticle extends AbstractVerticle {
 
     private Map<String, List<Score>> scores = new HashMap<>();
+    private DatabaseReference scoresRef;
 
     @Override
     public void start(Promise<Void> startPromise) {
         // initializeScores();
+        try {
+            initializeWithDefaultCredentials();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         Router router = Router.router(vertx);
 
@@ -61,30 +76,47 @@ public class MainVerticle extends AbstractVerticle {
                 });
     }
 
-    private void initializeScores() {
-        String pseudo = "christophet60";
-        String level = "achilles";
-        long elapsed = 29999;
-        int erred = 0;
-        int revealed = 32;
-        String symbol = "canonical";
-        boolean scrambled = true;
-        // Get the current date and time
-        LocalDateTime now = LocalDateTime.now();
+    public void initializeWithDefaultCredentials() throws IOException {
+        // Initialize Firebase with default credentials
+        FirebaseOptions options = new FirebaseOptions.Builder()
+                .setCredentials(GoogleCredentials.getApplicationDefault())
+                .setProjectId("aletheia-8c78f")
+                .setDatabaseUrl("https://aletheia-8c78f-default-rtdb.europe-west1.firebasedatabase.app")
+                .build();
 
-        // Create a formatter for ISO 8601 format
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+        FirebaseApp.initializeApp(options);
 
-        // Format the date and time using the formatter
-        String when = now.format(formatter);
-
-        Score initialScore = new Score(pseudo, level, elapsed, erred, revealed, symbol, scrambled, when);
-
-        List<Score> initialScores = new ArrayList<>();
-        initialScores.add(initialScore);
-
-        scores.put(pseudo, initialScores);
+        // Get reference to the "scores" node in Firebase
+        this.scoresRef = FirebaseDatabase.getInstance().getReference("scores");
     }
+
+    /*
+     * private void initializeScores() {
+     * String pseudo = "christophet60";
+     * String level = "achilles";
+     * long elapsed = 29999;
+     * int erred = 0;
+     * int revealed = 32;
+     * String symbol = "canonical";
+     * boolean scrambled = true;
+     * // Get the current date and time
+     * LocalDateTime now = LocalDateTime.now();
+     * 
+     * // Create a formatter for ISO 8601 format
+     * DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+     * 
+     * // Format the date and time using the formatter
+     * String when = now.format(formatter);
+     * 
+     * Score initialScore = new Score(pseudo, level, elapsed, erred, revealed,
+     * symbol, scrambled, when);
+     * 
+     * List<Score> initialScores = new ArrayList<>();
+     * initialScores.add(initialScore);
+     * 
+     * // scores.put(pseudo, initialScores);
+     * }
+     */
 
     private void handleFailure(RoutingContext routingContext) {
         // Log the error
@@ -120,22 +152,48 @@ public class MainVerticle extends AbstractVerticle {
         }
     }
 
+    // private void handlePost(RoutingContext routingContext) {
+    // handleRequest(routingContext, ctx -> {
+    // HttpServerRequest request = ctx.request();
+    // request.bodyHandler(buffer -> {
+    // JsonObject json = buffer.toJsonObject();
+    // // String pseudo = json.getString("pseudo");
+    // String pseudo = request.remoteAddress().host();
+    // Score newScore = Score.fromJson(json);
+    // newScore.setPseudo(pseudo);
+    // List<Score> pseudoScores = scores.computeIfAbsent(pseudo, k -> new
+    // ArrayList<>());
+    // pseudoScores.add(newScore);
+    // request.response()
+    // .putHeader("content-type", "application/json")
+    // .end(Json.encode(newScore));
+    // });
+    // });
+    // }
+
     private void handlePost(RoutingContext routingContext) {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
             request.bodyHandler(buffer -> {
                 JsonObject json = buffer.toJsonObject();
-                // String pseudo = json.getString("pseudo");
-                String pseudo = request.remoteAddress().host();
                 Score newScore = Score.fromJson(json);
-                newScore.setPseudo(pseudo);
+                if (newScore.getWhen() == null) {
+                    newScore.setWhen(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+                }
 
-                List<Score> pseudoScores = scores.computeIfAbsent(pseudo, k -> new ArrayList<>());
-                pseudoScores.add(newScore);
-
-                request.response()
-                        .putHeader("content-type", "application/json")
-                        .end(Json.encode(newScore));
+                // Push new score to Firebase
+                scoresRef.push().setValue(newScore, (databaseError, databaseReference) -> {
+                    if (databaseError != null) {
+                        sendJsonErrorResponse(request.response(), 500,
+                                "Failed to store score in database: " + databaseError.getMessage());
+                    } else {
+                        List<Score> pseudoScores = scores.computeIfAbsent(newScore.getPseudo(), k -> new ArrayList<>());
+                        pseudoScores.add(newScore);
+                        request.response()
+                                .putHeader("content-type", "application/json")
+                                .end(Json.encode(newScore));
+                    }
+                });
             });
         });
     }
@@ -144,8 +202,7 @@ public class MainVerticle extends AbstractVerticle {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
 
-            // String pseudo = request.getParam("pseudo");
-            String pseudo = request.remoteAddress().host();
+            String pseudo = request.getParam("pseudo");
             if (pseudo != null && scores.containsKey(pseudo)) {
                 scores.remove(pseudo);
                 request.response()
