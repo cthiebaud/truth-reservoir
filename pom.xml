@@ -8,7 +8,7 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.java>21</maven.compiler.java>
+        <maven.compiler.java>17</maven.compiler.java>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <main.verticle>com.cthiebaud.aletheia.MainVerticle</main.verticle>
     </properties>

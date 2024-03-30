@@ -1,6 +1,6 @@
-runtime: java21
+runtime: java17
 env: flex
 
 runtime_config:
     operating_system: "ubuntu22"
-    runtime_version: "21"
+    runtime_version: "17"
