@@ -30,7 +30,7 @@ public class MainVerticle extends AbstractVerticle {
 
     @Override
     public void start(Promise<Void> startPromise) {
-        initializeScores();
+        // initializeScores();
 
         Router router = Router.router(vertx);
 
@@ -125,8 +125,10 @@ public class MainVerticle extends AbstractVerticle {
             HttpServerRequest request = ctx.request();
             request.bodyHandler(buffer -> {
                 JsonObject json = buffer.toJsonObject();
-                String pseudo = json.getString("pseudo");
+                // String pseudo = json.getString("pseudo");
+                String pseudo = request.remoteAddress().host();
                 Score newScore = Score.fromJson(json);
+                newScore.setPseudo(pseudo);
 
                 List<Score> pseudoScores = scores.computeIfAbsent(pseudo, k -> new ArrayList<>());
                 pseudoScores.add(newScore);
@@ -142,7 +144,8 @@ public class MainVerticle extends AbstractVerticle {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
 
-            String pseudo = request.getParam("pseudo");
+            // String pseudo = request.getParam("pseudo");
+            String pseudo = request.remoteAddress().host();
             if (pseudo != null && scores.containsKey(pseudo)) {
                 scores.remove(pseudo);
                 request.response()
@@ -173,7 +176,9 @@ public class MainVerticle extends AbstractVerticle {
                         .putHeader("content-type", "application/json")
                         .end(Json.encode(ret));
             } else {
-                sendJsonErrorResponse(request.response(), 404, "Scores not found for pseudo " + pseudo);
+                request.response()
+                        .setStatusCode(204)
+                        .end();
             }
         });
     }
@@ -205,7 +210,9 @@ public class MainVerticle extends AbstractVerticle {
                         .putHeader("content-type", "application/json")
                         .end(Json.encode(bestScore.get()));
             } else {
-                sendJsonErrorResponse(request.response(), 404, "Best score not found with the given criteria");
+                request.response()
+                        .setStatusCode(204)
+                        .end();
             }
         });
     }
