@@ -51,9 +51,9 @@ public class MainVerticle extends AbstractVerticle {
 
         vertx.createHttpServer()
                 .requestHandler(router)
-                .listen(5000, http -> {
+                .listen(8080, http -> {
                     if (http.succeeded()) {
-                        System.out.println("Server started on port 5000");
+                        System.out.println("Server started on port 8080");
                         startPromise.complete();
                     } else {
                         startPromise.fail(http.cause());
