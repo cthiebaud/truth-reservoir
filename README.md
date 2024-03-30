@@ -1,2 +1,2 @@
 # truth-reservoir
-A reservoir of truths
+A Reservoir of Truths

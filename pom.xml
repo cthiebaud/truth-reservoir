@@ -84,7 +84,6 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <minimizeJar>true</minimizeJar>
                             <!-- https://stackoverflow.com/a/64263739/1070215 -->
                             <filters>
                                 <filter>
