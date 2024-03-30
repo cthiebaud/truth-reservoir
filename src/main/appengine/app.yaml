@@ -2,5 +2,5 @@ runtime: java17
 env: flex
 
 runtime_config:
-    operating_system: "ubuntu22"
+    operating_system: "ubuntu22.04"
     runtime_version: "17"
