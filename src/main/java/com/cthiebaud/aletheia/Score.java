@@ -3,6 +3,7 @@ package com.cthiebaud.aletheia;
 import io.vertx.core.json.JsonObject;
 
 public class Score {
+    private String sessionId;
     private String pseudo;
     private String level;
     private long elapsed;
@@ -12,8 +13,13 @@ public class Score {
     private boolean scrambled;
     private String when;
 
-    public Score(String pseudo, String level, long elapsed, int erred, int revealed, String symbol, boolean scrambled,
+    public Score() {
+    }
+
+    public Score(String sessionId, String pseudo, String level, long elapsed, int erred, int revealed, String symbol,
+            boolean scrambled,
             String when) {
+        this.sessionId = sessionId;
         this.pseudo = pseudo;
         this.level = level;
         this.elapsed = elapsed;
@@ -22,6 +28,14 @@ public class Score {
         this.symbol = symbol;
         this.scrambled = scrambled;
         this.when = when;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(String sessionId) {
+        this.sessionId = sessionId;
     }
 
     public String getPseudo() {
@@ -88,6 +102,10 @@ public class Score {
         this.when = when;
     }
 
+    public Boolean getVictory() {
+        return this.erred == 0 && this.revealed == 32;
+    }
+
     public JsonObject toJson() {
         return new JsonObject()
                 .put("pseudo", pseudo)
@@ -100,6 +118,7 @@ public class Score {
     }
 
     public static Score fromJson(JsonObject json) {
+        String sessionId = json.getString("sessionId");
         String pseudo = json.getString("pseudo");
         String level = json.getString("level");
         long elapsed = json.getLong("elapsed");
@@ -108,6 +127,6 @@ public class Score {
         String symbol = json.getString("symbol");
         boolean scrambled = json.getBoolean("scrambled");
         String when = json.getString("when");
-        return new Score(pseudo, level, elapsed, erred, revealed, symbol, scrambled, when);
+        return new Score(sessionId, pseudo, level, elapsed, erred, revealed, symbol, scrambled, when);
     }
 }

@@ -2,23 +2,24 @@ package com.cthiebaud.aletheia;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
@@ -35,7 +36,6 @@ import io.vertx.ext.web.handler.CorsHandler;
 
 public class MainVerticle extends AbstractVerticle {
 
-    private Map<String, List<Score>> scores = new HashMap<>();
     private DatabaseReference scoresRef;
 
     @Override
@@ -55,10 +55,17 @@ public class MainVerticle extends AbstractVerticle {
                 .allowedMethod(HttpMethod.GET) // Allow GET requests
                 .allowedMethod(HttpMethod.POST) // Allow POST requests
                 .allowedMethod(HttpMethod.DELETE) // Allow DELETE requests
-                .allowedHeader("*"); // Allow all headers
+                .allowedHeader("*") // Allow all headers
+        ;
 
         router.route().handler(corsHandler);
         router.route().failureHandler(this::handleFailure);
+        router.get("/sessionId").handler(ctx -> {
+            String sessionId = IdGenerator.INSTANCE.generateSessionId();
+            ctx.response()
+                    .putHeader("Content-Type", "application/json")
+                    .end(new JsonObject().put("sessionId", sessionId).encode());
+        });
         router.get("/best").handler(this::handleGetBest);
         router.get("/").handler(this::handleGetByPseudo);
         router.post("/").handler(this::handlePost);
@@ -140,10 +147,18 @@ public class MainVerticle extends AbstractVerticle {
         HttpServerRequest request = routingContext.request();
 
         try {
+            // Check if the request contains a session ID header
+            String sessionId = routingContext.request().getHeader("Session-Id");
+
+            // No need to generate or set a session ID cookie here
+
+            // Store the sessionId in the routing context for later retrieval
+            routingContext.put("sessionId", sessionId);
             handler.handle(routingContext);
+
         } catch (Exception e) {
             // Log the error
-            // e.printStackTrace();
+            e.printStackTrace();
             // Return detailed error response
             request.response()
                     .setStatusCode(500)
@@ -152,7 +167,7 @@ public class MainVerticle extends AbstractVerticle {
         }
     }
 
-    // private void handlePost(RoutingContext routingContext) {
+    // private void handlePost0(RoutingContext routingContext) {
     // handleRequest(routingContext, ctx -> {
     // HttpServerRequest request = ctx.request();
     // request.bodyHandler(buffer -> {
@@ -176,6 +191,7 @@ public class MainVerticle extends AbstractVerticle {
             HttpServerRequest request = ctx.request();
             request.bodyHandler(buffer -> {
                 JsonObject json = buffer.toJsonObject();
+                json.put("sessionId", routingContext.get("sessionId"));
                 Score newScore = Score.fromJson(json);
                 if (newScore.getWhen() == null) {
                     newScore.setWhen(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
@@ -187,8 +203,6 @@ public class MainVerticle extends AbstractVerticle {
                         sendJsonErrorResponse(request.response(), 500,
                                 "Failed to store score in database: " + databaseError.getMessage());
                     } else {
-                        List<Score> pseudoScores = scores.computeIfAbsent(newScore.getPseudo(), k -> new ArrayList<>());
-                        pseudoScores.add(newScore);
                         request.response()
                                 .putHeader("content-type", "application/json")
                                 .end(Json.encode(newScore));
@@ -198,79 +212,266 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
+    // private void handleDelete(RoutingContext routingContext) {
+    // handleRequest(routingContext, ctx -> {
+    // HttpServerRequest request = ctx.request();
+    // String pseudo = request.getParam("pseudo");
+    // if (pseudo != null && scores.containsKey(pseudo)) {
+    // scores.remove(pseudo);
+    // request.response()
+    // .putHeader("content-type", "text/plain")
+    // .end(Json.encode(new JsonObject().put("msg", "Scores for pseudo " + pseudo +
+    // " deleted")));
+    // } else {
+    // sendJsonErrorResponse(request.response(), 404, "Scores not found for pseudo "
+    // + pseudo);
+    // }
+    // });
+    // }
+
     private void handleDelete(RoutingContext routingContext) {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
-
             String pseudo = request.getParam("pseudo");
-            if (pseudo != null && scores.containsKey(pseudo)) {
-                scores.remove(pseudo);
-                request.response()
-                        .putHeader("content-type", "text/plain")
-                        .end(Json.encode(new JsonObject().put("msg", "Scores for pseudo " + pseudo + " deleted")));
-            } else {
-                sendJsonErrorResponse(request.response(), 404, "Scores not found for pseudo " + pseudo);
+
+            if (pseudo == null) {
+                sendJsonErrorResponse(request.response(), 400, "Pseudo parameter is required for delete operation");
+                return;
             }
+
+            scoresRef.orderByChild("pseudo").equalTo(pseudo).addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    if (dataSnapshot.exists()) {
+                        int totalSnapshots = (int) dataSnapshot.getChildrenCount();
+                        AtomicInteger deletionCount = new AtomicInteger(0);
+                        AtomicBoolean isErrorOccurred = new AtomicBoolean(false);
+
+                        for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
+                            scoreSnapshot.getRef().removeValue(new DatabaseReference.CompletionListener() {
+                                @Override
+                                public void onComplete(DatabaseError databaseError,
+                                        DatabaseReference databaseReference) {
+                                    if (databaseError != null) {
+                                        // Handle error
+                                        System.err.println("Error deleting score: " + databaseError.getMessage());
+                                        isErrorOccurred.set(true);
+                                    }
+
+                                    // Increment deletion count
+                                    int count = deletionCount.incrementAndGet();
+
+                                    // Check if all deletions are completed
+                                    if (count == totalSnapshots) {
+                                        if (isErrorOccurred.get()) {
+                                            sendJsonErrorResponse(request.response(), 500,
+                                                    "Error occurred during deletion");
+                                        } else {
+                                            request.response()
+                                                    .putHeader("content-type", "text/plain")
+                                                    .end(Json.encode(new JsonObject().put("msg",
+                                                            "Scores for pseudo " + pseudo + " deleted")));
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        sendJsonErrorResponse(request.response(), 404, "Scores not found for pseudo " + pseudo);
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    sendJsonErrorResponse(request.response(), 500,
+                            "Failed to delete scores for pseudo " + pseudo + ": " + databaseError.getMessage());
+                }
+            });
         });
     }
+
+    // private void handleGetByPseudo(RoutingContext routingContext) {
+    // handleRequest(routingContext, ctx -> {
+    // HttpServerRequest request = ctx.request();
+    // String pseudo = request.getParam("pseudo");
+    //
+    // List<Score> ret;
+    // if (pseudo == null) {
+    // ret = scores.values().stream()
+    // .flatMap(List::stream)
+    // .collect(Collectors.toList());
+    // } else {
+    // ret = scores.getOrDefault(pseudo, new ArrayList<>());
+    // }
+    //
+    // if (!ret.isEmpty()) {
+    // request.response()
+    // .putHeader("content-type", "application/json")
+    // .end(Json.encode(ret));
+    // } else {
+    // request.response()
+    // .setStatusCode(204)
+    // .end();
+    // }
+    // });
+    // }
 
     private void handleGetByPseudo(RoutingContext routingContext) {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
             String pseudo = request.getParam("pseudo");
 
-            List<Score> ret;
             if (pseudo == null) {
-                ret = scores.values().stream()
-                        .flatMap(List::stream)
-                        .collect(Collectors.toList());
-            } else {
-                ret = scores.getOrDefault(pseudo, new ArrayList<>());
-            }
+                // Fetch all scores
+                scoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        List<Score> scores = new ArrayList<>();
+                        for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
+                            Score score = scoreSnapshot.getValue(Score.class);
+                            scores.add(score);
+                        }
+                        if (!scores.isEmpty()) {
+                            request.response()
+                                    .putHeader("content-type", "application/json")
+                                    .end(Json.encode(scores));
+                        } else {
+                            request.response()
+                                    .setStatusCode(204)
+                                    .end();
+                        }
+                    }
 
-            if (!ret.isEmpty()) {
-                request.response()
-                        .putHeader("content-type", "application/json")
-                        .end(Json.encode(ret));
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        sendJsonErrorResponse(request.response(), 500,
+                                "Failed to fetch scores: " + databaseError.getMessage());
+                    }
+                });
             } else {
-                request.response()
-                        .setStatusCode(204)
-                        .end();
+                // Fetch scores for specific pseudo
+                scoresRef.orderByChild("pseudo").equalTo(pseudo)
+                        .addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                List<Score> scores = new ArrayList<>();
+                                for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
+                                    Score score = scoreSnapshot.getValue(Score.class);
+                                    scores.add(score);
+                                }
+                                if (!scores.isEmpty()) {
+                                    request.response()
+                                            .putHeader("content-type", "application/json")
+                                            .end(Json.encode(scores));
+                                } else {
+                                    request.response()
+                                            .setStatusCode(204)
+                                            .end();
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+                                sendJsonErrorResponse(request.response(), 500, "Failed to fetch scores for pseudo "
+                                        + pseudo + ": " + databaseError.getMessage());
+                            }
+                        });
             }
         });
     }
+
+    // private void handleGetBest(RoutingContext routingContext) {
+    // handleRequest(routingContext, ctx -> {
+    // HttpServerRequest request = ctx.request();
+    //
+    // String pseudo = request.getParam("pseudo");
+    // String level = request.getParam("level");
+    // Boolean scrambled = Optional.ofNullable(request.getParam("scrambled"))
+    // .map(Boolean::parseBoolean)
+    // .orElse(null);
+    // String symbol = request.getParam("symbol");
+    //
+    // Stream<Score> qwe = scores.entrySet().stream()
+    // .filter(entry -> pseudo == null || entry.getKey().equals(pseudo))
+    // .flatMap(entry -> entry.getValue().stream())
+    // .filter(score -> (level == null || score.getLevel().equals(level)) &&
+    // (symbol == null || score.getSymbol().equals(symbol)) &&
+    // (scrambled == null || score.isScrambled() == scrambled) &&
+    // (score.getErred() == 0) &&
+    // (score.getRevealed() == 32));
+    //
+    // Optional<Score> bestScore =
+    // qwe.min(Comparator.comparingLong(Score::getElapsed));
+    //
+    // if (bestScore.isPresent()) {
+    // request.response()
+    // .putHeader("content-type", "application/json")
+    // .end(Json.encode(bestScore.get()));
+    // } else {
+    // request.response()
+    // .setStatusCode(204)
+    // .end();
+    // }
+    // });
+    // }
 
     private void handleGetBest(RoutingContext routingContext) {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
 
-            String pseudo = request.getParam("pseudo");
-            String level = request.getParam("level");
-            Boolean scrambled = Optional.ofNullable(request.getParam("scrambled"))
-                    .map(Boolean::parseBoolean)
-                    .orElse(null);
-            String symbol = request.getParam("symbol");
+            scoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                String pseudo = request.getParam("pseudo");
+                String level = request.getParam("level");
+                Boolean scrambled = Optional.ofNullable(request.getParam("scrambled"))
+                        .map(Boolean::parseBoolean)
+                        .orElse(null);
+                String symbol = request.getParam("symbol");
 
-            Stream<Score> qwe = scores.entrySet().stream()
-                    .filter(entry -> pseudo == null || entry.getKey().equals(pseudo))
-                    .flatMap(entry -> entry.getValue().stream())
-                    .filter(score -> (level == null || score.getLevel().equals(level)) &&
-                            (symbol == null || score.getSymbol().equals(symbol)) &&
-                            (scrambled == null || score.isScrambled() == scrambled) &&
-                            (score.getErred() == 0) &&
-                            (score.getRevealed() == 32));
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    List<Score> matchingScores = new ArrayList<>();
 
-            Optional<Score> bestScore = qwe.min(Comparator.comparingLong(Score::getElapsed));
+                    for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
+                        Score score = scoreSnapshot.getValue(Score.class);
 
-            if (bestScore.isPresent()) {
-                request.response()
-                        .putHeader("content-type", "application/json")
-                        .end(Json.encode(bestScore.get()));
-            } else {
-                request.response()
-                        .setStatusCode(204)
-                        .end();
-            }
+                        // Check if the score matches the criteria
+                        if ((pseudo == null || pseudo.equals(score.getPseudo()))
+                                && (level == null || level.equals(score.getLevel()))
+                                && (scrambled == null || scrambled.equals(score.isScrambled()))
+                                && (symbol == null || symbol.equals(score.getSymbol()))
+                                && score.getVictory()) {
+                            matchingScores.add(score);
+                        }
+                    }
+
+                    if (!matchingScores.isEmpty()) {
+                        // Find the best score
+                        Score bestScore = matchingScores.stream()
+                                .min(Comparator.comparingLong(Score::getElapsed))
+                                .orElse(null);
+
+                        if (bestScore != null) {
+                            request.response()
+                                    .putHeader("content-type", "application/json")
+                                    .end(Json.encode(bestScore));
+                        } else {
+                            request.response()
+                                    .setStatusCode(204)
+                                    .end();
+                        }
+                    } else {
+                        request.response()
+                                .setStatusCode(204)
+                                .end();
+                    }
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    sendJsonErrorResponse(request.response(), 500,
+                            "Failed to fetch best score: " + databaseError.getMessage());
+                }
+            });
         });
     }
 

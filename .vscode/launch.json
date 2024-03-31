@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "qwe",
+            "request": "launch",
+            "mainClass": "com.cthiebaud.aletheia.qwe",
+            "projectName": "truth-reservoir"
+        },
+        {
+            "type": "java",
             "name": "Current File",
             "request": "launch",
             "mainClass": "${file}"

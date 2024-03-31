@@ -49,6 +49,16 @@
             <artifactId>google-auth-library-oauth2-http</artifactId>
             <version>1.23.0</version>
         </dependency>
+        <!-- 
+// create the generator once and use it any number of times, even concurrently across threads
+HumanReadableIdGenerator idGen = new PermutationBasedHumanReadableIdGenerator();
+String id = idGen.generate();            
+-->
+        <dependency>
+            <groupId>com.github.kkuegler</groupId>
+            <artifactId>human-readable-ids-java</artifactId>
+            <version>0.4</version>
+        </dependency>
     </dependencies>
 
     <build>
