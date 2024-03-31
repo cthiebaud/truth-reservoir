@@ -66,7 +66,7 @@ public class MainVerticle extends AbstractVerticle {
                     .putHeader("Content-Type", "application/json")
                     .end(new JsonObject().put("sessionId", sessionId).encode());
         });
-        router.get("/best").handler(this::handleGetBest);
+        router.get("/bests").handler(this::handleGetBests);
         router.get("/").handler(this::handleGetByPseudo);
         router.post("/").handler(this::handlePost);
         router.delete("/").handler(this::handleDelete);
@@ -380,7 +380,7 @@ public class MainVerticle extends AbstractVerticle {
         });
     }
 
-    // private void handleGetBest(RoutingContext routingContext) {
+    // private void handleGetBests(RoutingContext routingContext) {
     // handleRequest(routingContext, ctx -> {
     // HttpServerRequest request = ctx.request();
     //
@@ -415,50 +415,38 @@ public class MainVerticle extends AbstractVerticle {
     // });
     // }
 
-    private void handleGetBest(RoutingContext routingContext) {
+    private void handleGetBests(RoutingContext routingContext) {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
 
             scoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                String pseudo = request.getParam("pseudo");
-                String level = request.getParam("level");
-                Boolean scrambled = Optional.ofNullable(request.getParam("scrambled"))
-                        .map(Boolean::parseBoolean)
-                        .orElse(null);
-                String symbol = request.getParam("symbol");
-
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    List<Score> matchingScores = new ArrayList<>();
+                    Map<String, Score> bestScores = new HashMap<>();
 
                     for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
                         Score score = scoreSnapshot.getValue(Score.class);
 
-                        // Check if the score matches the criteria
-                        if ((pseudo == null || pseudo.equals(score.getPseudo()))
-                                && (level == null || level.equals(score.getLevel()))
-                                && (scrambled == null || scrambled.equals(score.isScrambled()))
-                                && (symbol == null || symbol.equals(score.getSymbol()))
-                                && score.getVictory()) {
-                            matchingScores.add(score);
+                        // Check if the score is a victory
+                        if (score.getVictory()) {
+                            String level = score.getLevel();
+                            boolean scrambled = score.isScrambled();
+                            String key = level + "-" + scrambled;
+
+                            // Check if the current score is better than the previously found best score
+                            if (!bestScores.containsKey(key) || score.getElapsed() < bestScores.get(key).getElapsed()) {
+                                bestScores.put(key, score);
+                            }
                         }
                     }
 
-                    if (!matchingScores.isEmpty()) {
-                        // Find the best score
-                        Score bestScore = matchingScores.stream()
-                                .min(Comparator.comparingLong(Score::getElapsed))
-                                .orElse(null);
+                    if (!bestScores.isEmpty()) {
+                        // Convert the map of best scores to a list
+                        List<Score> bestScoresList = new ArrayList<>(bestScores.values());
 
-                        if (bestScore != null) {
-                            request.response()
-                                    .putHeader("content-type", "application/json")
-                                    .end(Json.encode(bestScore));
-                        } else {
-                            request.response()
-                                    .setStatusCode(204)
-                                    .end();
-                        }
+                        request.response()
+                                .putHeader("content-type", "application/json")
+                                .end(Json.encode(bestScoresList));
                     } else {
                         request.response()
                                 .setStatusCode(204)
@@ -469,7 +457,7 @@ public class MainVerticle extends AbstractVerticle {
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
                     sendJsonErrorResponse(request.response(), 500,
-                            "Failed to fetch best score: " + databaseError.getMessage());
+                            "Failed to fetch best scores: " + databaseError.getMessage());
                 }
             });
         });
