@@ -8,7 +8,7 @@ public class Score {
     private String level;
     private long elapsed;
     private int erred;
-    private int revealed;
+    private int unconcealed;
     private String symbol;
     private boolean scrambled;
     private String when;
@@ -16,7 +16,7 @@ public class Score {
     public Score() {
     }
 
-    public Score(String sessionId, String pseudo, String level, long elapsed, int erred, int revealed, String symbol,
+    public Score(String sessionId, String pseudo, String level, long elapsed, int erred, int unconcealed, String symbol,
             boolean scrambled,
             String when) {
         this.sessionId = sessionId;
@@ -24,7 +24,7 @@ public class Score {
         this.level = level;
         this.elapsed = elapsed;
         this.erred = erred;
-        this.revealed = revealed;
+        this.unconcealed = unconcealed;
         this.symbol = symbol;
         this.scrambled = scrambled;
         this.when = when;
@@ -70,12 +70,12 @@ public class Score {
         this.erred = erred;
     }
 
-    public int getRevealed() {
-        return revealed;
+    public int getUnconcealed() {
+        return unconcealed;
     }
 
-    public void setRevealed(int revealed) {
-        this.revealed = revealed;
+    public void setUnconcealed(int unconcealed) {
+        this.unconcealed = unconcealed;
     }
 
     public String getSymbol() {
@@ -103,7 +103,7 @@ public class Score {
     }
 
     public Boolean getVictory() {
-        return this.erred == 0 && this.revealed == 32;
+        return this.erred == 0 && this.unconcealed == 32;
     }
 
     public JsonObject toJson() {
@@ -112,7 +112,7 @@ public class Score {
                 .put("level", level)
                 .put("elapsed", elapsed)
                 .put("erred", erred)
-                .put("revealed", revealed)
+                .put("unconcealed", unconcealed)
                 .put("symbol", symbol)
                 .put("scrambled", scrambled);
     }
@@ -123,10 +123,10 @@ public class Score {
         String level = json.getString("level");
         long elapsed = json.getLong("elapsed");
         int erred = json.getInteger("erred");
-        int revealed = json.getInteger("revealed");
+        int unconcealed = json.getInteger("unconcealed");
         String symbol = json.getString("symbol");
         boolean scrambled = json.getBoolean("scrambled");
         String when = json.getString("when");
-        return new Score(sessionId, pseudo, level, elapsed, erred, revealed, symbol, scrambled, when);
+        return new Score(sessionId, pseudo, level, elapsed, erred, unconcealed, symbol, scrambled, when);
     }
 }
