@@ -12,13 +12,15 @@ public class Score {
     private String symbol;
     private boolean scrambled;
     private String when;
+    private boolean victory;
 
     public Score() {
     }
 
     public Score(String sessionId, String pseudo, String level, long elapsed, int erred, int unconcealed, String symbol,
             boolean scrambled,
-            String when) {
+            String when,
+            boolean victory) {
         this.sessionId = sessionId;
         this.pseudo = pseudo;
         this.level = level;
@@ -28,6 +30,7 @@ public class Score {
         this.symbol = symbol;
         this.scrambled = scrambled;
         this.when = when;
+        this.victory = victory;
     }
 
     public String getSessionId() {
@@ -103,7 +106,11 @@ public class Score {
     }
 
     public Boolean getVictory() {
-        return this.erred == 0 && this.unconcealed == 32;
+        return (this.erred == 0 && this.unconcealed == 32) && this.victory;
+    }
+
+    public void setVictory(boolean victory) {
+        this.victory = victory;
     }
 
     public JsonObject toJson() {
@@ -114,7 +121,9 @@ public class Score {
                 .put("erred", erred)
                 .put("unconcealed", unconcealed)
                 .put("symbol", symbol)
-                .put("scrambled", scrambled);
+                .put("scrambled", scrambled)
+                .put("when", when)
+                .put("victory", victory);
     }
 
     public static Score fromJson(JsonObject json) {
@@ -127,6 +136,7 @@ public class Score {
         String symbol = json.getString("symbol");
         boolean scrambled = json.getBoolean("scrambled");
         String when = json.getString("when");
-        return new Score(sessionId, pseudo, level, elapsed, erred, unconcealed, symbol, scrambled, when);
+        boolean victory = json.getBoolean("victory");
+        return new Score(sessionId, pseudo, level, elapsed, erred, unconcealed, symbol, scrambled, when, victory);
     }
 }
