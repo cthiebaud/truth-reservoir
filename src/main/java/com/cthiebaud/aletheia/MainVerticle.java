@@ -17,6 +17,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import io.vertx.core.AbstractVerticle;
@@ -292,7 +293,9 @@ public class MainVerticle extends AbstractVerticle {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
 
-            scoresRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            Query query = scoresRef.orderByChild("victory").equalTo(true);
+
+            query.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     Map<String, Score> bestScores = new HashMap<>();
@@ -300,16 +303,13 @@ public class MainVerticle extends AbstractVerticle {
                     for (DataSnapshot scoreSnapshot : dataSnapshot.getChildren()) {
                         Score score = scoreSnapshot.getValue(Score.class);
 
-                        // Check if the score is a victory
-                        if (score.getVictory()) {
-                            String level = score.getLevel();
-                            boolean scrambled = score.isScrambled();
-                            String key = level + "-" + scrambled;
+                        String level = score.getLevel();
+                        boolean scrambled = score.isScrambled();
+                        String key = level + "-" + scrambled;
 
-                            // Check if the current score is better than the previously found best score
-                            if (!bestScores.containsKey(key) || score.getElapsed() < bestScores.get(key).getElapsed()) {
-                                bestScores.put(key, score);
-                            }
+                        // Check if the current score is better than the previously found best score
+                        if (!bestScores.containsKey(key) || score.getElapsed() < bestScores.get(key).getElapsed()) {
+                            bestScores.put(key, score);
                         }
                     }
 
