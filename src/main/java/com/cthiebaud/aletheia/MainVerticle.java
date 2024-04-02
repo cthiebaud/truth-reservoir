@@ -223,13 +223,19 @@ public class MainVerticle extends AbstractVerticle {
         handleRequest(routingContext, ctx -> {
             HttpServerRequest request = ctx.request();
             String pseudo = request.getParam("pseudo");
+            String sessionId = request.getParam("sessionId");
 
-            if (pseudo == null) {
-                sendJsonErrorResponse(request.response(), 400, "Pseudo parameter is required for delete operation");
+            Query pseudoOrSessionIdQuery;
+            if (sessionId != null) {
+                pseudoOrSessionIdQuery = scoresRef.orderByChild("sessionId").equalTo(sessionId);
+            } else if (pseudo != null) {
+                pseudoOrSessionIdQuery = scoresRef.orderByChild("pseudo").equalTo(pseudo);
+            } else {
+                sendJsonErrorResponse(request.response(), 400,
+                        "[Pseudo or sessionId] parameter is required for delete operation");
                 return;
             }
-
-            scoresRef.orderByChild("pseudo").equalTo(pseudo).addListenerForSingleValueEvent(new ValueEventListener() {
+            pseudoOrSessionIdQuery.addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
                     if (dataSnapshot.exists()) {
@@ -260,7 +266,9 @@ public class MainVerticle extends AbstractVerticle {
                                             request.response()
                                                     .putHeader("content-type", "text/plain")
                                                     .end(Json.encode(new JsonObject().put("msg",
-                                                            "Scores for pseudo " + pseudo + " deleted")));
+                                                            "Scores for sessionId=='" + sessionId + "' OR pseudo=='"
+                                                                    + pseudo
+                                                                    + "' deleted")));
                                         }
                                     }
                                 }
@@ -278,6 +286,7 @@ public class MainVerticle extends AbstractVerticle {
                 }
             });
         });
+
     }
 
     private void handleGetByPseudo(RoutingContext routingContext) {
