@@ -115,6 +115,7 @@ public class Score {
 
     public JsonObject toJson() {
         return new JsonObject()
+                .put("sessionId", sessionId)
                 .put("pseudo", pseudo)
                 .put("level", level)
                 .put("elapsed", elapsed)

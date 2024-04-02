@@ -36,6 +36,9 @@ import io.vertx.ext.web.handler.CorsHandler;
 public class MainVerticle extends AbstractVerticle {
 
     private DatabaseReference scoresRef;
+    private DatabaseReference usersRef;
+
+    private Map<String, Boolean> userExistenceCache = new HashMap<>();
 
     @Override
     public void start(Promise<Void> startPromise) {
@@ -94,6 +97,7 @@ public class MainVerticle extends AbstractVerticle {
 
         // Get reference to the "scores" node in Firebase
         this.scoresRef = FirebaseDatabase.getInstance().getReference("scores");
+        this.usersRef = FirebaseDatabase.getInstance().getReference("users");
     }
 
     private void handleFailure(RoutingContext routingContext) {
@@ -143,7 +147,38 @@ public class MainVerticle extends AbstractVerticle {
             HttpServerRequest request = ctx.request();
             request.bodyHandler(buffer -> {
                 JsonObject json = buffer.toJsonObject();
-                json.put("sessionId", routingContext.get("sessionId"));
+                String sessionId = routingContext.get("sessionId");
+                json.put("sessionId", sessionId);
+
+                // Check if the user existence status is cached
+                if (!userExistenceCache.containsKey(sessionId)) {
+                    // Check if the user already exists in Firebase
+                    usersRef.orderByChild("sessionId").equalTo(sessionId)
+                            .addListenerForSingleValueEvent(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
+                                    boolean exists = dataSnapshot.exists();
+
+                                    if (exists) {
+                                        userExistenceCache.put(sessionId, exists); // Cache the existence status
+                                    } else {
+                                        // User does not exist, push to Firebase
+                                        User newUser = User.fromJson(json);
+                                        usersRef.push().setValue(newUser, (databaseError, databaseReference) -> {
+                                            if (databaseError == null) {
+                                                userExistenceCache.put(sessionId, exists); // Cache the existence status
+                                            }
+                                        });
+                                    }
+                                }
+
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
+                                    // Handle onCancelled event if needed
+                                }
+                            });
+                }
+
                 Score newScore = Score.fromJson(json);
                 if (newScore.getWhen() == null) {
                     newScore.setWhen(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
@@ -261,6 +296,7 @@ public class MainVerticle extends AbstractVerticle {
                 // Fetch scores for specific pseudo
                 scoresRef.orderByChild("pseudo").equalTo(pseudo)
                         .addListenerForSingleValueEvent(new ValueEventListener() {
+
                             @Override
                             public void onDataChange(DataSnapshot dataSnapshot) {
                                 List<Score> scores = new ArrayList<>();
@@ -284,6 +320,7 @@ public class MainVerticle extends AbstractVerticle {
                                 sendJsonErrorResponse(request.response(), 500, "Failed to fetch scores for pseudo "
                                         + pseudo + ": " + databaseError.getMessage());
                             }
+
                         });
             }
         });
