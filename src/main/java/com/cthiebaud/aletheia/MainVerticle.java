@@ -40,6 +40,31 @@ public class MainVerticle extends AbstractVerticle {
 
     private Map<String, Boolean> userExistenceCache = new HashMap<>();
 
+    private void findAvailableSessionId(RoutingContext ctx) {
+        String sessionId = IdGenerator.INSTANCE.generateSessionId();
+        usersRef.orderByChild("sessionId").equalTo(sessionId)
+                .addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        boolean exists = dataSnapshot.exists();
+                        if (exists) {
+                            // If session ID exists, try again recursively
+                            findAvailableSessionId(ctx);
+                        } else {
+                            // If session ID doesn't exist, return it
+                            ctx.response()
+                                    .putHeader("Content-Type", "application/json")
+                                    .end(new JsonObject().put("sessionId", sessionId).encode());
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError error) {
+                        // Handle onCancelled event if needed
+                    }
+                });
+    }
+
     @Override
     public void start(Promise<Void> startPromise) {
         // initializeScores();
@@ -62,12 +87,7 @@ public class MainVerticle extends AbstractVerticle {
 
         router.route().handler(corsHandler);
         router.route().failureHandler(this::handleFailure);
-        router.get("/sessionId").handler(ctx -> {
-            String sessionId = IdGenerator.INSTANCE.generateSessionId();
-            ctx.response()
-                    .putHeader("Content-Type", "application/json")
-                    .end(new JsonObject().put("sessionId", sessionId).encode());
-        });
+        router.get("/sessionId").handler(this::findAvailableSessionId);
         router.get("/bests").handler(this::handleGetBests);
         router.get("/").handler(this::handleGetByPseudo);
         router.post("/").handler(this::handlePost);
