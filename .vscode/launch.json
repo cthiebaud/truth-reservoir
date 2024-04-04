@@ -6,6 +6,20 @@
     "configurations": [
         {
             "type": "java",
+            "name": "KueglerGenerator",
+            "request": "launch",
+            "mainClass": "com.cthiebaud.unique.name.KueglerGenerator",
+            "projectName": "truth-reservoir"
+        },
+        {
+            "type": "java",
+            "name": "GreekGenerator",
+            "request": "launch",
+            "mainClass": "com.cthiebaud.unique.name.GreekGenerator",
+            "projectName": "truth-reservoir"
+        },
+        {
+            "type": "java",
             "name": "qwe",
             "request": "launch",
             "mainClass": "com.cthiebaud.aletheia.qwe",

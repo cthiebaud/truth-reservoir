@@ -59,6 +59,11 @@ String id = idGen.generate();
             <artifactId>human-readable-ids-java</artifactId>
             <version>0.4</version>
         </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.2</version>
+        </dependency>        
     </dependencies>
 
     <build>

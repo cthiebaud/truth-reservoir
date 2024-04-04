@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.cthiebaud.unique.name.IGenerator;
+import com.cthiebaud.unique.name.NameOnSteroids;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -43,8 +44,9 @@ public class MainVerticle extends AbstractVerticle {
 
     private Map<String, Boolean> userExistenceCache = new HashMap<>();
 
-    private void findAvailableSessionId(RoutingContext ctx) {
-        String sessionId = IGenerator.get(GREEK).generateSessionId();
+    private void findAvailableUserSession(RoutingContext ctx) {
+        NameOnSteroids nos = IGenerator.get(GREEK).getNameOnSteroids();
+        String sessionId = IGenerator.get(GREEK).generateSessionId(nos.getName());
         usersRef.orderByChild("sessionId").equalTo(sessionId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -52,18 +54,30 @@ public class MainVerticle extends AbstractVerticle {
                         boolean exists = dataSnapshot.exists();
                         if (exists) {
                             // If session ID exists, try again recursively
-                            findAvailableSessionId(ctx);
+                            findAvailableUserSession(ctx);
                         } else {
-                            // If session ID doesn't exist, return it
-                            ctx.response()
-                                    .putHeader("Content-Type", "application/json")
-                                    .end(new JsonObject().put("sessionId", sessionId).encode());
+                            // If session ID doesn't exist, return it as JSON
+                            try {
+                                JsonObject sessionIdJson = new JsonObject()
+                                        .put("sessionId", sessionId)
+                                        .put("name", nos.getName())
+                                        .put("didascalia", nos.getDidascalia())
+                                        .put("description", nos.getDescription());
+                                ctx.response()
+                                        .putHeader("Content-Type", "application/json")
+                                        .end(sessionIdJson.encode());
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                // Handle exception if needed
+                                ctx.fail(500); // Internal server error
+                            }
                         }
                     }
 
                     @Override
                     public void onCancelled(DatabaseError error) {
                         // Handle onCancelled event if needed
+                        ctx.fail(500); // Internal server error
                     }
                 });
     }
@@ -90,7 +104,7 @@ public class MainVerticle extends AbstractVerticle {
 
         router.route().handler(corsHandler);
         router.route().failureHandler(this::handleFailure);
-        router.get("/sessionId").handler(this::findAvailableSessionId);
+        router.get("/user-session").handler(this::findAvailableUserSession);
         router.get("/bests").handler(this::handleGetBests);
         router.get("/").handler(this::handleGetByPseudo);
         router.post("/").handler(this::handlePost);

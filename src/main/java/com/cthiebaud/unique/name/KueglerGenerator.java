@@ -14,13 +14,19 @@ public enum KueglerGenerator implements IGenerator {
     }
 
     // Method to generate session ID
-    public String generateSessionId() {
+    public String generateSessionId(String name) {
         return idGen.generate();
     }
 
+    public NameOnSteroids getNameOnSteroids() {
+        return NameOnSteroids.nullNameOnSteroids;
+    }
+
     public static void main(String[] args) {
-        // Access the singleton instance and generate session ID
-        String sessionId = KueglerGenerator.INSTANCE.generateSessionId();
+        IGenerator generator = IGenerator.get(IGenerator.GeneratorType.KUEGLER);
+        NameOnSteroids nos = generator.getNameOnSteroids();
+        System.out.println(nos);
+        String sessionId = generator.generateSessionId(nos.getName());
         System.out.println(sessionId);
     }
 }
