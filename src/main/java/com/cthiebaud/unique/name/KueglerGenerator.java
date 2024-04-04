@@ -1,15 +1,15 @@
-package com.cthiebaud.aletheia;
+package com.cthiebaud.unique.name;
 
 import com.github.kkuegler.HumanReadableIdGenerator;
 import com.github.kkuegler.PermutationBasedHumanReadableIdGenerator;
 
-public enum IdGenerator {
+public enum KueglerGenerator implements IGenerator {
     INSTANCE; // Singleton instance
 
     private final HumanReadableIdGenerator idGen;
 
     // Private constructor to initialize the id generator
-    private IdGenerator() {
+    private KueglerGenerator() {
         idGen = new PermutationBasedHumanReadableIdGenerator();
     }
 
@@ -20,7 +20,7 @@ public enum IdGenerator {
 
     public static void main(String[] args) {
         // Access the singleton instance and generate session ID
-        String sessionId = IdGenerator.INSTANCE.generateSessionId();
+        String sessionId = KueglerGenerator.INSTANCE.generateSessionId();
         System.out.println(sessionId);
     }
 }

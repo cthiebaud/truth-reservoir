@@ -1,5 +1,7 @@
 package com.cthiebaud.aletheia;
 
+import static com.cthiebaud.unique.name.IGenerator.GeneratorType.*;
+
 import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -10,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.cthiebaud.unique.name.IGenerator;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
@@ -41,7 +44,7 @@ public class MainVerticle extends AbstractVerticle {
     private Map<String, Boolean> userExistenceCache = new HashMap<>();
 
     private void findAvailableSessionId(RoutingContext ctx) {
-        String sessionId = IdGenerator.INSTANCE.generateSessionId();
+        String sessionId = IGenerator.get(GREEK).generateSessionId();
         usersRef.orderByChild("sessionId").equalTo(sessionId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
