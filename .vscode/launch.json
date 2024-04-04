@@ -6,13 +6,6 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Generator",
-            "request": "launch",
-            "mainClass": "com.cthiebaud.unique.name.Generator",
-            "projectName": "truth-reservoir"
-        },
-        {
-            "type": "java",
             "name": "qwe",
             "request": "launch",
             "mainClass": "com.cthiebaud.aletheia.qwe",
