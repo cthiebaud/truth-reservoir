@@ -18,13 +18,13 @@ public enum KueglerGenerator implements IGenerator {
         return idGen.generate();
     }
 
-    public NameOnSteroids getNameOnSteroids() {
+    public NameOnSteroids getNameOnSteroids(String name) {
         return NameOnSteroids.nullNameOnSteroids;
     }
 
     public static void main(String[] args) {
         IGenerator generator = IGenerator.get(IGenerator.GeneratorType.KUEGLER);
-        NameOnSteroids nos = generator.getNameOnSteroids();
+        NameOnSteroids nos = generator.getNameOnSteroids(null);
         System.out.println(nos);
         String sessionId = generator.generateSessionId(nos.getName());
         System.out.println(sessionId);

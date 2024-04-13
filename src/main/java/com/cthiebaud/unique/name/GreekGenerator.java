@@ -81,7 +81,7 @@ public enum GreekGenerator implements IGenerator {
         return (adjective + "-" + name + "-" + numberString).toLowerCase();
     }
 
-    public NameOnSteroids getNameOnSteroids() {
+    public NameOnSteroids getNameOnSteroids(String name) {
         NameOnSteroids greekName = getRandomElement2(greekNames);
         return greekName;
     }
@@ -94,7 +94,7 @@ public enum GreekGenerator implements IGenerator {
     public static void main(String[] args) {
         System.out.println("---");
         IGenerator generator = IGenerator.get(IGenerator.GeneratorType.GREEK);
-        NameOnSteroids nos = generator.getNameOnSteroids();
+        NameOnSteroids nos = generator.getNameOnSteroids(null);
         System.out.println(nos);
         System.out.println(generator.generateSessionId(nos.getName()));
         System.out.println("---");

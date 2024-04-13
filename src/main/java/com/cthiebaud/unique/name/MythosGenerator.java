@@ -1,5 +1,8 @@
 package com.cthiebaud.unique.name;
 
+import com.cthiebaud.mythos.model.Model;
+import com.cthiebaud.mythos.model.Model.Actor;
+
 import java.util.List;
 import java.util.Random;
 
@@ -13,8 +16,14 @@ public enum MythosGenerator implements IGenerator {
     }
 
     @Override
-    public NameOnSteroids getNameOnSteroids() {
-        com.cthiebaud.mythos.model.Model.Actor a = com.cthiebaud.mythos.model.Model.INSTANCE.getRandomActor();
+    public NameOnSteroids getNameOnSteroids(String name) {
+        Actor a = null;
+        if (name != null) {
+            a = Model.INSTANCE.findActorByName(name).orElse(null);
+        }
+        if (a == null) {
+            a = Model.INSTANCE.getRandomActor();
+        }
         return new NameOnSteroids(a.getName(), a.getDidascalia(), a.getHtmlDescription());
 
     }

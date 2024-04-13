@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Random;
 
 public interface IGenerator {
-    NameOnSteroids getNameOnSteroids();
+    NameOnSteroids getNameOnSteroids(String name);
 
     String generateSessionId(String name);
 
