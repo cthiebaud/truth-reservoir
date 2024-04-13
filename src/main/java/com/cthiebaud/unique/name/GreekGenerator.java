@@ -28,12 +28,12 @@ public enum GreekGenerator implements IGenerator {
     }
 
     // Method to load a dictionary from a file
-    private List<String> loadDictionary(String filename) {
+    public static List<String> loadDictionary(String filename) {
         List<String> dictionary = new ArrayList<>(); // Create a list to store dictionary words
 
         try (
                 // Open the input stream to read from the dictionary file
-                InputStream inputStream = getClass().getResourceAsStream(filename);
+                InputStream inputStream = GreekGenerator.class.getResourceAsStream(filename);
                 // Create a buffered reader to efficiently read lines from the input stream
                 BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
             String line;
@@ -75,7 +75,7 @@ public enum GreekGenerator implements IGenerator {
     }
 
     public String generateSessionId(String name) {
-        String adjective = getRandomElement(adjectives);
+        String adjective = IGenerator.getRandomElement(adjectives);
         Random random = new Random();
         String numberString = String.format("%02d", random.nextInt(100)); // Generate number string from 00 to 99
         return (adjective + "-" + name + "-" + numberString).toLowerCase();
@@ -84,11 +84,6 @@ public enum GreekGenerator implements IGenerator {
     public NameOnSteroids getNameOnSteroids() {
         NameOnSteroids greekName = getRandomElement2(greekNames);
         return greekName;
-    }
-
-    private String getRandomElement(List<String> list) {
-        Random random = new Random();
-        return list.get(random.nextInt(list.size()));
     }
 
     private NameOnSteroids getRandomElement2(List<NameOnSteroids> list) {

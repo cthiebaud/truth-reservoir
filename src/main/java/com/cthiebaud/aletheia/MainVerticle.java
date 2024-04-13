@@ -45,8 +45,8 @@ public class MainVerticle extends AbstractVerticle {
     private Map<String, Boolean> userExistenceCache = new HashMap<>();
 
     private void findAvailableUserSession(RoutingContext ctx) {
-        NameOnSteroids nos = IGenerator.get(GREEK).getNameOnSteroids();
-        String sessionId = IGenerator.get(GREEK).generateSessionId(nos.getName());
+        NameOnSteroids nos = IGenerator.get(MYTHOS).getNameOnSteroids();
+        String sessionId = IGenerator.get(MYTHOS).generateSessionId(nos.getName());
         usersRef.orderByChild("sessionId").equalTo(sessionId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
