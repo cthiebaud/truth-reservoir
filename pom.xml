@@ -13,6 +13,20 @@
         <main.verticle>com.cthiebaud.aletheia.MainVerticle</main.verticle>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>github</id>
+            <name>Christophe Thiebaud GitHub Maven Repository</name>
+            <url>https://maven.pkg.github.com/cthiebaud/repository</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>io.vertx</groupId>
@@ -62,9 +76,8 @@ String id = idGen.generate();
         <dependency>
             <groupId>com.cthiebaud.mythos</groupId>
             <artifactId>model</artifactId>
-            <version>1.0.1-SNAPSHOT</version>
+            <version>1.0.2-SNAPSHOT</version>
         </dependency>
-    
     </dependencies>
 
     <build>

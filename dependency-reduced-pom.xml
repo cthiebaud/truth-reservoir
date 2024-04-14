@@ -57,6 +57,17 @@
       </plugin>
     </plugins>
   </build>
+  <repositories>
+    <repository>
+      <releases />
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>github</id>
+      <name>Christophe Thiebaud GitHub Maven Repository</name>
+      <url>https://maven.pkg.github.com/cthiebaud/repository</url>
+    </repository>
+  </repositories>
   <properties>
     <main.verticle>com.cthiebaud.aletheia.MainVerticle</main.verticle>
     <maven.compiler.java>21</maven.compiler.java>
