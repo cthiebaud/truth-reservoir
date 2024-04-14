@@ -6,6 +6,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "MythosGenerator",
+            "request": "launch",
+            "mainClass": "com.cthiebaud.unique.name.MythosGenerator",
+            "projectName": "truth-reservoir"
+        },
+        {
+            "type": "java",
             "name": "KueglerGenerator",
             "request": "launch",
             "mainClass": "com.cthiebaud.unique.name.KueglerGenerator",

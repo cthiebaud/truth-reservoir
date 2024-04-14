@@ -1,6 +1,6 @@
 package com.cthiebaud.unique.name;
 
-import com.cthiebaud.mythos.model.Model;
+import static com.cthiebaud.mythos.model.Model.MODEL;
 import com.cthiebaud.mythos.model.Model.Actor;
 
 import java.util.List;
@@ -12,29 +12,40 @@ public enum MythosGenerator implements IGenerator {
     private List<String> adjectives;
 
     MythosGenerator() {
-        adjectives = GreekGenerator.loadDictionary("adjectives.txt");
+        adjectives = IGenerator.loadDictionary("adjectives.txt");
     }
 
     @Override
     public NameOnSteroids getNameOnSteroids(String name) {
         Actor a = null;
         if (name != null) {
-            a = Model.INSTANCE.findActorByName(name).orElse(null);
+            a = MODEL.findActorByName(name).orElse(null);
         }
         if (a == null) {
-            a = Model.INSTANCE.getRandomActor();
+            a = MODEL.getRandomActor();
         }
         return new NameOnSteroids(a.getName(), a.getDidascalia(), a.getHtmlDescription());
-
     }
 
     @Override
     public String generateSessionId(String name) {
         String adjective = IGenerator.getRandomElement(adjectives);
-        Random random = new Random();
         // Generate number string from 00 to 99
+        Random random = new Random();
         String numberString = String.format("%02d", random.nextInt(100));
         return (adjective + "-" + name + "-" + numberString).toLowerCase();
     }
 
+    /*
+     * mvn exec:java -Dexec.mainClass="com.cthiebaud.unique.name.MythosGenerator"
+     * -Dexec.args="Athena" -q
+     */
+    public static void main(String[] args) {
+        System.out.println("---");
+        IGenerator generator = IGenerator.get(IGenerator.GeneratorType.MYTHOS);
+        NameOnSteroids nos = generator.getNameOnSteroids(args.length > 0 ? args[0] : null);
+        System.out.println(nos);
+        System.out.println(generator.generateSessionId(nos.getName()));
+        System.out.println("---");
+    }
 }

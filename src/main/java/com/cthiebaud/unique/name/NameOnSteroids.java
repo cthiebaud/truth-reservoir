@@ -4,21 +4,6 @@ public class NameOnSteroids {
     private String name;
     private String didascalia;
     private String description;
-    final static public NameOnSteroids nullNameOnSteroids = new NameOnSteroids.NullNameOnSteroids();
-
-    private static class NullNameOnSteroids extends NameOnSteroids {
-        public String getName() {
-            return null;
-        }
-
-        public String getDidascalia() {
-            return null;
-        }
-
-        public String getDescription() {
-            return null;
-        }
-    }
 
     // Default constructor
     public NameOnSteroids() {
